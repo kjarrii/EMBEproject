@@ -2,6 +2,8 @@
 #define ENCODER_H
 
 #include "digital_in.h"
+#include "digital_out.h"
+
 
 class Encoder {
 public:
@@ -14,6 +16,7 @@ private:
     Digital_in C2;
     int posCount;
     bool C1LastVal;
+    Digital_out led;
 };
 
 #endif

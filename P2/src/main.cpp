@@ -18,14 +18,15 @@ volatile unsigned long startTime = 0;
 volatile bool speedReached63Percent = false; 
 volatile float maxSpeed_63 = 1436 * 0.63;
 volatile int interruptCount = 0;
-volatile int timerStatus = 0;
+volatile int counter_ms = 0;
 
 
 Timer_msec timer;
 
 ISR(TIMER1_COMPA_vect) {
+    counter_ms ++;
     pulseCount = encoder.readAndResetPulseCount();
-    motorSpeedPPS = pulseCount;
+    motorSpeedPPS = pulseCount * 100; //Changed for part 2
     float motorSpeedRPM = (motorSpeedPPS / pulsesPerRevolution) * 60;
     
 
@@ -35,11 +36,10 @@ ISR(TIMER1_COMPA_vect) {
 
     if (!speedReached63Percent && motorSpeedPPS >= maxSpeed_63) {
         speedReached63Percent = true;
-        timerStatus = TCNT1;  // Capture the value of Timer1 count at this moment
-        Serial.print("Time Constant");
-        Serial.println(timerStatus);
+        Serial.println(counter_ms * 90); 
     }
     
+    /*
     Serial.print("Speed: ");
     Serial.print(motorSpeedPPS);
     Serial.print(" PPS, ");
@@ -49,20 +49,21 @@ ISR(TIMER1_COMPA_vect) {
     //------Added for part 2-----
     Serial.print("Max speed: ");
     Serial.print(maxMotorSpeedPPS);
-    Serial.println(" PPS, ");
+    Serial.println(" PPS, ");*/
+    
 }
 
 
 int main() {
     Serial.begin(9600);
     encoder.init();
-    timer.init(1000);
+    timer.init(10); //was timer.init(1000); in part 1
     sei();
 
     motor.init();
     motor.setSpeed(255);
     while(1){
-
+        
     }
 
 

@@ -1,8 +1,17 @@
-#include "controller.h"
+class PController {
+public:
+    PController(double kp);  // Constructor to set proportional gain
+    double update(double ref, double actual);  // Update control law
+    
+private:
+    double kp;  // Proportional gain
+};
 
-PController::PController(float kp) : kp(kp) {}
+// Constructor
+PController::PController(double kp) : kp(kp) {}
 
-int16_t PController::calculate(int32_t setpoint, int32_t actual) {
-    int32_t error = setpoint - actual;
-    return static_cast<int16_t>(kp * error);
+// Update method for proportional control
+double PController::update(double ref, double actual) {
+    double error = ref - actual;  // Calculate the error
+    return kp * error;            // Apply proportional control law
 }

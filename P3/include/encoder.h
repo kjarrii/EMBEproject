@@ -1,20 +1,14 @@
-#ifndef ENCODER_H
-#define ENCODER_H
-
 #include "digital_in.h"
+#include <avr/io.h>
 
 class Encoder {
 public:
-    Encoder(DigitalIn& channelA, DigitalIn& channelB);
-    int32_t getCount(); 
-    void reset();
-
-    void update(); 
+    Encoder(uint8_t C1, uint8_t C2);
+    void init();
+    int position();
+    int readAndResetPulseCount();
 private:
-    DigitalIn& encA;
-    DigitalIn& encB;
-    int32_t count;
-    bool lastStateA;
+    Digital_in C1, C2;
+    int posCount;
+    bool C1LastVal;
 };
-
-#endif 

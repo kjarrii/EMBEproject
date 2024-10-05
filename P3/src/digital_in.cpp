@@ -1,12 +1,18 @@
-#include "digital_in.h"
 #include <avr/io.h>
+#include "digital_in.h"
 
-DigitalIn::DigitalIn(volatile uint8_t* pinReg, uint8_t pin)
-    : pinReg(pinReg), pin(pin) {
-    // Set pin as input
-    *(pinReg - 1) &= ~(1 << pin);
+Digital_in::Digital_in(uint8_t pin) {
+    pinMask = (1 << pin);
+}
+void Digital_in::init() {
+    DDRB &= ~pinMask;
+    PORTB |= pinMask;
 }
 
-uint8_t DigitalIn::read() {
-    return (*pinReg & (1 << pin)) ? 1 : 0;
+bool Digital_in::is_hi() {
+    return PINB & pinMask;
+}
+
+bool Digital_in::is_lo() {
+    return !(PINB & pinMask);
 }

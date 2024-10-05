@@ -3,15 +3,14 @@
 
 #include <stdint.h>
 
-class DigitalIn {
+class Digital_in {
 public:
-    DigitalIn(volatile uint8_t* pinReg, uint8_t pin);
-    
-    uint8_t read();
-
+    Digital_in(uint8_t pin);
+    void init();
+    bool is_hi();
+    bool is_lo();
 private:
-    volatile uint8_t* pinReg;
-    uint8_t pin;
+    uint8_t pinMask;
 };
 
 #endif

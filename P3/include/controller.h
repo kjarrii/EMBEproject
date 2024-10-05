@@ -1,16 +1,13 @@
-#ifndef CONTROLLER_H
-#define CONTROLLER_H
-
-#include <stdint.h>
+#ifndef P_CONTROLLER_H
+#define P_CONTROLLER_H
 
 class PController {
 public:
-    PController(float kp);
+    PController(double kp);  // Constructor to set proportional gain
+    double update(double ref, double actual);  // Update control signal based on reference and actual speed
     
-    int16_t calculate(int32_t setpoint, int32_t actual);
-
 private:
-    float kp;
+    double kp;  // Proportional gain
 };
 
 #endif

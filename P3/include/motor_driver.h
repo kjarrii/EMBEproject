@@ -1,19 +1,17 @@
 #ifndef MOTOR_DRIVER_H
 #define MOTOR_DRIVER_H
 
-#include <stdint.h>
-#include "digital_out.h"
+#include "analog_out.h"
 
 class MotorDriver {
 public:
-    MotorDriver(DigitalOut& pin1, DigitalOut& pin2);
+    MotorDriver(AnalogOut& pin1, AnalogOut& pin2);  // Updated to take two direction pins and AnalogOut for PWM control
+    void setSpeed(int16_t speed);    // Set motor speed using PWM
+    void stop();                     // Stop the motor
     
-    void setSpeed(int16_t speed);
-    void stop();
-
 private:
-    DigitalOut& motorPin1;
-    DigitalOut& motorPin2;
+    AnalogOut& motorPin1;           // Motor direction pin 1
+    AnalogOut& motorPin2;           // Motor direction pin 2
 };
 
-#endif // MOTOR_DRIVER_H
+#endif

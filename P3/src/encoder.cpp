@@ -1,24 +1,36 @@
 #include "encoder.h"
+#include <avr/interrupt.h>
 
-Encoder::Encoder(DigitalIn& channelA, DigitalIn& channelB)
-    : encA(channelA), encB(channelB), count(0), lastStateA(false) {}
+Encoder::Encoder(uint8_t C1, uint8_t C2) : C1(C1), C2(C2), posCount(), C1LastVal(false) {}
 
-int32_t Encoder::getCount() {
-    return count;
+void Encoder::init() {
+    C1.init();
+    C2.init();
+    C1LastVal = C1.is_hi();
+    posCount = 0;
+    
+    PCICR |= (1 << PCIE0);
+    PCMSK0 |= (1 << PCINT4);           
 }
 
-void Encoder::reset() {
-    count = 0;
-}
+int Encoder::position() {
+    bool C1Val = C1.is_hi();
 
-void Encoder::update() {
-    bool currentStateA = encA.read();
-    if (currentStateA != lastStateA) {
-        if (encB.read() != currentStateA) {
-            count++;
+    if (C1Val && !C1LastVal) {
+        bool C2Val = C2.is_hi();
+        if (C1Val != C2Val) {
+            posCount++;
         } else {
-            count--;
+            posCount--;
         }
     }
-    lastStateA = currentStateA;
+    
+    C1LastVal = C1Val;
+    return posCount;
+}
+//Returns the pulse count since the last call and resets the counter.
+int Encoder::readAndResetPulseCount() {
+    int pulses = posCount;
+    posCount = 0;
+    return pulses;
 }

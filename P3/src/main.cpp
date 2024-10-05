@@ -22,7 +22,7 @@ AnalogOut motorPin2(PD6);
 MotorDriver motor(motorPin1, motorPin2);
 
 PIController piController(0.5f, 0.1f, 0.01f); 
-volatile int setpoint = 1400;
+volatile int setpoint = 1000;
 
 DigitalOut led(&PORTB, PB5); 
 volatile int ledBlinkCounter = 0;
@@ -143,12 +143,12 @@ ISR(TIMER1_COMPA_vect) {
     }
 
     ledBlinkCounter++;
-    if (currentState == PREOPERATIONAL && ledBlinkCounter >= 50) { // 1Hz blinking (100ms toggle period)
+    if (currentState == PREOPERATIONAL && ledBlinkCounter >= 50) {
         ledState = !ledState;
         led.write(ledState);
         ledBlinkCounter = 0;
     } 
-    else if (currentState == STOP && ledBlinkCounter >= 25) { // 2Hz blinking (50ms toggle period)
+    else if (currentState == STOP && ledBlinkCounter >= 25) {
         ledState = !ledState;
         led.write(ledState);
         ledBlinkCounter = 0;

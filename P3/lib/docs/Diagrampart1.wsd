@@ -1,0 +1,15 @@
+@startuml Part1
+
+Initialization : Entry - Initialize parameters.
+Initialization : Do - Check if system ready and send boot up msg
+Initialization : Exit - Send to PreOperation
+
+
+Initialization --> Operational : Set operational command 
+Operational : Entry - Start motor control and set LED to stay on
+Operational : Do - Control motor
+Operational : Exit - Safely stop motor
+Operational --> Initialization : Reset command
+
+
+@enduml

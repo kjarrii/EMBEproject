@@ -3,7 +3,6 @@
 
 DigitalOut::DigitalOut(volatile uint8_t* port, uint8_t pin)
     : port(port), pin(pin) {
-    // Set pin as output
     *(port - 1) |= (1 << pin);
 }
 

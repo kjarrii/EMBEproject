@@ -5,30 +5,29 @@
 #include "encoder.h"
 #include "motor_driver.h"
 #include "controller.h"
+#include "PIcontroller.h"
 #include "analog_out.h"
 #include "digital_out.h"
-#include <Arduino.h>  // For serial debugging
+#include <Arduino.h> 
 
-// Encoder setup
 Encoder encoder(PB4, PB3); 
 volatile int pulseCount = 0;
 volatile float motorSpeedPPS = 0;
 const int pulsesPerRevolution = 700; 
 volatile int timerCounter = 0;
 
-// Motor control pins
-AnalogOut motorPin1(PD5);    // Motor direction pin 1
-AnalogOut motorPin2(PD6);    // Motor direction pin 2
+AnalogOut motorPin1(PD5);
+AnalogOut motorPin2(PD6);
 
-MotorDriver motor(motorPin1, motorPin2);  // Use both direction pins and PWM
+MotorDriver motor(motorPin1, motorPin2);
 
-// Proportional controller setup
-PController pController(0.5f);  // P controller with a proportional gain of 0.05
-volatile int setpoint = 1400;     // Desired speed in pulses per second (PPS)
+PIController piController(0.5f, 0.1f, 0.01f); 
+volatile int setpoint = 1400;
 
 DigitalOut led(&PORTB, PB5); 
+volatile int ledBlinkCounter = 0;
+volatile bool ledState = false;
 
-// Timer1 setup function for the encoder 10ms
 void initTimer1() {
     TCCR1A = 0;
     TCCR1B = (1 << WGM12) | (1 << CS11);  
@@ -36,12 +35,7 @@ void initTimer1() {
     TIMSK1 |= (1 << OCIE1A);
 }
 
-ISR(TIMER1_COMPA_vect) {
-    pulseCount = encoder.readAndResetPulseCount();
-    motorSpeedPPS = pulseCount * 100; 
-    int16_t controlSignal = pController.update(setpoint, motorSpeedPPS);
-    //motor.setSpeed(controlSignal);    
-}
+
 
 ISR(PCINT0_vect) {
     encoder.position();
@@ -56,29 +50,58 @@ void initEstop() {
 
 enum SystemState {
     INITIALIZATION,
-    OPERATIONAL
+    PREOPERATIONAL,
+    OPERATIONAL,
+    STOP
 };
 SystemState currentState = INITIALIZATION;
+SystemState lastState;
 
 void transitionToState(SystemState newState) {
+    lastState = currentState;
     currentState = newState;
     
     switch (newState) {
         case INITIALIZATION:
             Serial.println("State: Initialization");
             encoder.init();
-            initTimer1();  // Initialize Timer1 for regular 10ms interrupts and PWM
-            sei();  // Enable global interrupts
+            initTimer1();
+            sei();
             led.write(0);
-            motor.setSpeed(0);
+            motor.stop();
+            Serial.println("Booted up, available commands are 'o', 'r' and 'p'");
+            transitionToState(PREOPERATIONAL);
             break;
+
+        case PREOPERATIONAL: {
+            Serial.println("State: Pre-Operational");
+            Serial.print("Enter Kp: ");
+            while (Serial.available() == 0);
+            double Kp = Serial.parseFloat();
+            Serial.print("Enter Ti: ");
+            while (Serial.available() == 0); 
+            double Ti = Serial.parseFloat(); 
+       
+            piController = PIController(Kp, Ti, 0.01f); 
+
+            Serial.println("Controller parameters updated.");
+            Serial.println("Press o to go into the operational stage");
+            break;
+        }
+
         case OPERATIONAL:
             Serial.println("State: Operational");
             led.write(1);
             motor.setSpeed(100);
             break;
+
+        case STOP:
+            Serial.println("State: Stop");
+            led.write(0);
+            motor.stop();
     }
 }
+
 
 int main() {
     Serial.begin(9600);
@@ -89,13 +112,14 @@ int main() {
         if (Serial.available() > 0) {
             char command = Serial.read();
 
-            if (command == 'i') {
-                transitionToState(INITIALIZATION);
-            } else if (command == 'o') {
+            if (command == 'o') {
                 transitionToState(OPERATIONAL);
-            } else if (command == 'r') {
-                //Reset command
-                transitionToState(INITIALIZATION);
+            } 
+            else if (command == 'r') {
+                transitionToState(lastState);
+            }
+            else if (command == 'p'){
+                transitionToState(PREOPERATIONAL);
             }
         }
     }
@@ -105,7 +129,28 @@ int main() {
 
 ISR(INT0_vect) {
     //Estop
-    if (currentState != INITIALIZATION){
-        transitionToState(INITIALIZATION);
+    if (currentState == OPERATIONAL){
+        transitionToState(STOP);
+    }
+}
+
+ISR(TIMER1_COMPA_vect) {
+    pulseCount = encoder.readAndResetPulseCount();
+    motorSpeedPPS = pulseCount * 100; 
+    int16_t controlSignal = piController.update(setpoint, motorSpeedPPS);
+    if (currentState == OPERATIONAL){
+       motor.setSpeed(controlSignal);    
+    }
+
+    ledBlinkCounter++;
+    if (currentState == PREOPERATIONAL && ledBlinkCounter >= 50) { // 1Hz blinking (100ms toggle period)
+        ledState = !ledState;
+        led.write(ledState);
+        ledBlinkCounter = 0;
+    } 
+    else if (currentState == STOP && ledBlinkCounter >= 25) { // 2Hz blinking (50ms toggle period)
+        ledState = !ledState;
+        led.write(ledState);
+        ledBlinkCounter = 0;
     }
 }

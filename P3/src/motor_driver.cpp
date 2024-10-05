@@ -11,7 +11,7 @@ void MotorDriver::setSpeed(int16_t speed) {
         motorPin1.writePWM(0);
         motorPin2.writePWM(speed);
     } else {
-        stop();  // Stop the motor
+        stop();
     }
 }
 

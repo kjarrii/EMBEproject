@@ -1,3 +1,6 @@
+//===== Part 2.1 =====
+//Code based on assignment 5.2
+/*
 #include <Arduino.h>
 
 void setup() {
@@ -11,3 +14,7 @@ void loop() {
         Serial.println(received);
     }
 }
+*/
+
+
+//===== Part 2.2 =====

@@ -5,7 +5,6 @@
 #include <stdint.h>
 #include <cstdlib>
 
-
 uint16_t calculateCRC(uint8_t *buffer, uint8_t length) {
     uint16_t crc = 0xFFFF;
     for (uint8_t i = 0; i < length; i++) {
@@ -23,12 +22,25 @@ void sendModbusMessage(int file, uint8_t server, uint8_t function, uint16_t reg,
     uint16_t crc = calculateCRC(request, 6);
     request[6] = (uint8_t)(crc & 0xFF);
     request[7] = (uint8_t)(crc >> 8);
+
+    printf("Sent request: ");
+    for (int i = 0; i < 8; i++) printf("%02X ", request[i]);
+    printf("\n");
+
     write(file, request, 8);
 }
 
 int main(int argc, char *argv[]) {
+    if (argc != 5) {
+        printf("Usage: %s <server> <function> <register> <value>\n", argv[0]);
+        return -1;
+    }
+
     int file = open("/dev/ttyS0", O_RDWR | O_NOCTTY | O_NDELAY);
-    if (file < 0) return -1;
+    if (file < 0) {
+        perror("Failed to open the serial port.\n");
+        return -1;
+    }
 
     struct termios options;
     tcgetattr(file, &options);
@@ -43,13 +55,17 @@ int main(int argc, char *argv[]) {
     uint16_t value = atoi(argv[4]);
 
     sendModbusMessage(file, server, function, reg, value);
+
     usleep(100000);
 
     uint8_t response[8];
     int count = read(file, response, 8);
     if (count > 0) {
+        printf("Received reply: ");
         for (int i = 0; i < count; i++) printf("%02X ", response[i]);
         printf("\n");
+    } else {
+        printf("No data received or incomplete response.\n");
     }
 
     close(file);

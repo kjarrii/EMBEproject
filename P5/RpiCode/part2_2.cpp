@@ -1,75 +1,87 @@
-#include <stdio.h>
+#include <iostream>
+#include <iomanip>
 #include <fcntl.h>
-#include <unistd.h>
 #include <termios.h>
-#include <stdint.h>
-#include <cstdlib>
+#include <unistd.h>
+#include <cstdint>
+#include <cstring>
 
-uint16_t calculateCRC(uint8_t *buffer, uint8_t length) {
+uint16_t calculate_crc(uint8_t *buffer, int length);
+void send_modbus_message(int fd, uint8_t server_id, uint8_t function_code, uint16_t register_address, uint16_t value);
+
+int main(int argc, char *argv[]) {
+    if (argc < 5) {
+        std::cerr << "Usage: ./modbus <server_id> <function_code> <register_address> <value>\n";
+        return 1;
+    }
+
+    uint8_t server_id = std::stoi(argv[1]);
+    uint8_t function_code = std::stoi(argv[2]);
+    uint16_t register_address = std::stoi(argv[3]);
+    uint16_t value = std::stoi(argv[4]);
+
+    int fd = open("/dev/ttyS0", O_RDWR | O_NOCTTY | O_NDELAY);
+    if (fd == -1) {
+        std::cerr << "Error opening serial port\n";
+        return 1;
+    }
+
+    struct termios options;
+    tcgetattr(fd, &options);
+    cfsetispeed(&options, B9600);
+    cfsetospeed(&options, B9600);
+    options.c_cflag &= ~PARENB;
+    options.c_cflag &= ~CSTOPB;
+    options.c_cflag &= ~CSIZE;
+    options.c_cflag |= CS8;
+    options.c_cflag |= CREAD | CLOCAL;
+    tcsetattr(fd, TCSANOW, &options);
+
+    send_modbus_message(fd, server_id, function_code, register_address, value);
+
+    close(fd);
+    return 0;
+}
+
+uint16_t calculate_crc(uint8_t *buffer, int length) {
     uint16_t crc = 0xFFFF;
-    for (uint8_t i = 0; i < length; i++) {
-        crc ^= buffer[i];
-        for (uint8_t j = 0; j < 8; j++) {
-            if (crc & 1) crc = (crc >> 1) ^ 0xA001;
-            else crc = crc >> 1;
+    for (int pos = 0; pos < length; pos++) {
+        crc ^= (uint16_t)buffer[pos];
+        for (int i = 8; i != 0; i--) {
+            if (crc & 0x0001) {
+                crc >>= 1;
+                crc ^= 0xA001;
+            } else {
+                crc >>= 1;
+            }
         }
     }
     return crc;
 }
 
-void sendModbusMessage(int file, uint8_t server, uint8_t function, uint16_t reg, uint16_t value) {
-    uint8_t request[8] = {server, function, (uint8_t)(reg >> 8), (uint8_t)reg, (uint8_t)(value >> 8), (uint8_t)value};
-    uint16_t crc = calculateCRC(request, 6);
-    request[6] = (uint8_t)(crc & 0xFF);
-    request[7] = (uint8_t)(crc >> 8);
+void send_modbus_message(int fd, uint8_t server_id, uint8_t function_code, uint16_t register_address, uint16_t value) {
+    uint8_t message[8];
+    message[0] = server_id;
+    message[1] = function_code;
+    message[2] = register_address >> 8;
+    message[3] = register_address & 0xFF;
+    message[4] = value >> 8;
+    message[5] = value & 0xFF;
+    uint16_t crc = calculate_crc(message, 6);
+    message[6] = crc & 0xFF;
+    message[7] = crc >> 8;
 
-    printf("Sent request: ");
-    for (int i = 0; i < 8; i++) printf("%02X ", request[i]);
-    printf("\n");
-
-    write(file, request, 8);
-}
-
-int main(int argc, char *argv[]) {
-    if (argc != 5) {
-        printf("Usage: %s <server> <function> <register> <value>\n", argv[0]);
-        return -1;
-    }
-
-    int file = open("/dev/ttyS0", O_RDWR | O_NOCTTY | O_NDELAY);
-    if (file < 0) {
-        perror("Failed to open the serial port.\n");
-        return -1;
-    }
-
-    struct termios options;
-    tcgetattr(file, &options);
-    options.c_cflag = B115200 | CS8 | CREAD | CLOCAL;
-    options.c_iflag = IGNPAR;
-    tcflush(file, TCIFLUSH);
-    tcsetattr(file, TCSANOW, &options);
-
-    uint8_t server = atoi(argv[1]);
-    uint8_t function = atoi(argv[2]);
-    uint16_t reg = atoi(argv[3]);
-    uint16_t value = atoi(argv[4]);
-
-    sendModbusMessage(file, server, function, reg, value);
-
-    usleep(100000);
+    write(fd, message, 8);
 
     uint8_t response[8];
-    int count = read(file, response, 8);
-    if (count > 0) {
-        printf("Received reply: ");
-        for (int i = 0; i < count; i++) printf("%02X ", response[i]);
-        printf("\n");
+    int bytes_read = read(fd, response, 8);
+    if (bytes_read == 8) {
+        std::cout << "Received reply: ";
+        for (int i = 0; i < 8; i++) {
+            std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)response[i] << " ";
+        }
+        std::cout << std::dec << "\n";
     } else {
-        printf("No data received or incomplete response.\n");
-        for (int i = 0; i < count; i++) printf("%02X ", response[i]);
-        printf("\n");
+        std::cerr << "Error: Incomplete or no response received.\n";
     }
-
-    close(file);
-    return 0;
 }

@@ -66,6 +66,8 @@ int main(int argc, char *argv[]) {
         printf("\n");
     } else {
         printf("No data received or incomplete response.\n");
+        for (int i = 0; i < count; i++) printf("%02X ", response[i]);
+        printf("\n");
     }
 
     close(file);

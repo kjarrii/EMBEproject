@@ -47,21 +47,20 @@ void send_request(int fd, uint8_t server, uint8_t func, uint16_t reg, uint16_t v
     request[2] = reg >> 8;
     request[3] = reg & 0xFF;
 
-    if (func == 0x06) {  // Write Single Register
+    if (func == 0x06) { 
         request[4] = value >> 8;
         request[5] = value & 0xFF;
-    } else {  // Read Single Register
+    } else {
         request[4] = 0x00;
         request[5] = 0x01;
     }
 
     uint16_t crc = compute_crc(request, 6);
-    request[6] = crc & 0xFF;        // LSB first
-    request[7] = (crc >> 8) & 0xFF; // MSB second
-
+    request[6] = crc & 0xFF; 
+    request[7] = (crc >> 8) & 0xFF;
+    printf("Calculated CRC: %02X %02X\n", request[6], request[7]);//Nýtt
     write(fd, request, 8);
 
-    // Display sent request
     printf("Sent request: ");
     for (int i = 0; i < 8; i++) {
         printf("%02X ", request[i]);
@@ -80,7 +79,6 @@ void read_response(int fd) {
         }
         printf("\n");
 
-        // Check for exception response
         if ((response[1] & 0x80) == 0x80) {
             printf("Exception Code: %d\n", response[2]);
         }

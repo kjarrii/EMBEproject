@@ -1,0 +1,80 @@
+#include <Arduino.h>
+
+//define Modbus slave address ( i need this apparently)
+#define SLAVE_ID 1
+
+//register state
+#define CONTROL_REGISTER 0x00
+uint16_t registers[1];  
+
+
+uint16_t compute_crc(uint8_t *buf, uint8_t len) {
+
+  uint16_t crc = 0xFFFF;
+
+  for (uint8_t pos = 0; pos < len; pos++) {
+
+    crc ^= (uint16_t)buf[pos];
+
+    for (uint8_t i = 8; i != 0; i--) {
+
+      if ((crc & 0x0001) != 0) {
+
+        crc >>= 1;
+        crc ^= 0xA001;
+      } 
+      else {
+        crc >>= 1;
+
+      }
+    }
+  }
+  return crc;
+}
+
+void setup() {
+
+  Serial.begin(115200);  //initialize
+  
+  registers[0] = 0x80;
+}
+
+void loop() {
+
+  if (Serial.available() >= 8) {
+    uint8_t request[8];
+
+    for (int i = 0; i < 8; i++) {
+      request[i] = Serial.read();
+
+    }
+
+    uint16_t crc_received = (request[7] << 8) | request[6];  // CRC from the request
+    uint16_t crc_calculated = compute_crc(request, 6);  // Calculate CRC from the received data
+
+    if (crc_received == crc_calculated) {
+      uint8_t function_code = request[1];
+
+      if (function_code == 0x03) {  // Read Holding Registers (function 0x03)
+
+        uint16_t reg_addr = (request[2] << 8) | request[3];
+
+        if (reg_addr == CONTROL_REGISTER) {
+
+          //send response
+          uint8_t response[8];
+          response[0] = request[0];  
+          response[1] = request[1];  
+          response[2] = 2;           
+          response[3] = registers[0] >> 8;  
+          response[4] = registers[0] & 0xFF; 
+          uint16_t crc = compute_crc(response, 5);  //cre calc
+          response[5] = crc & 0xFF;
+          response[6] = crc >> 8;
+          Serial.write(response, 8);  //write the response
+
+        }
+      }
+    }
+  }
+}

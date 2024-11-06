@@ -1,4 +1,4 @@
-/*#include <stdio.h>
+#include <stdio.h>
 #include <stdlib.h> 
 #include <fcntl.h>
 #include <unistd.h>
@@ -109,9 +109,8 @@ int main(int argc, char *argv[]) {
     close(fd);
     return 0;
 }
-*/
 
-#include <stdint.h>
+/*#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -229,3 +228,4 @@ int main(int argc, char *argv[]) {
     close(fd);
     return 0;
 }
+*/

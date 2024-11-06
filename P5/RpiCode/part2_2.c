@@ -58,7 +58,7 @@ void send_request(int fd, uint8_t server, uint8_t func, uint16_t reg, uint16_t v
     uint16_t crc = compute_crc(request, 6);
     request[6] = crc & 0xFF; 
     request[7] = (crc >> 8) & 0xFF;
-    printf("Calculated CRC: %02X %02X\n", request[6], request[7]);//Nýtt
+
     write(fd, request, 8);
 
     printf("Sent request: ");

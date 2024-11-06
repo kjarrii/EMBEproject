@@ -1,4 +1,4 @@
-#include <stdio.h>
+/*#include <stdio.h>
 #include <stdlib.h> 
 #include <fcntl.h>
 #include <unistd.h>
@@ -109,3 +109,92 @@ int main(int argc, char *argv[]) {
     close(fd);
     return 0;
 }
+*/
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <string.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <termios.h>
+#include <errno.h>
+
+uint16_t compute_crc(uint8_t *buf, int len) {
+    uint16_t crc = 0xFFFF;
+    for (int pos = 0; pos < len; pos++) {
+        crc ^= (uint16_t)buf[pos];
+        for (int i = 8; i != 0; i--) {
+            if ((crc & 0x0001) != 0) {
+                crc >>= 1;
+                crc ^= 0xA001;
+            } else {
+                crc >>= 1;
+            }
+        }
+    }
+    return crc;
+}
+
+void send_request(int fd, uint8_t *request, int length) {
+    write(fd, request, length);
+}
+
+int read_response(int fd, uint8_t *response, int length) {
+    int bytes_read = 0;
+    while (bytes_read < length) {
+        int result = read(fd, &response[bytes_read], length - bytes_read);
+        if (result < 1) return -1;
+        bytes_read += result;
+    }
+    return bytes_read;
+}
+
+int main(int argc, char *argv[]) {
+    if (argc != 5) return 1;
+
+    uint8_t server = atoi(argv[1]);
+    uint8_t function = atoi(argv[2]);
+    uint16_t reg_addr = atoi(argv[3]);
+    uint16_t value = atoi(argv[4]);
+
+    int fd = open("/dev/ttyS0", O_RDWR | O_NOCTTY | O_NDELAY);
+    if (fd == -1) return 1;
+
+    struct termios options;
+    tcgetattr(fd, &options);
+    cfsetispeed(&options, B115200);
+    cfsetospeed(&options, B115200);
+    options.c_cflag &= ~PARENB;
+    options.c_cflag &= ~CSTOPB;
+    options.c_cflag &= ~CSIZE;
+    options.c_cflag |= CS8;
+    cfmakeraw(&options);
+    tcsetattr(fd, TCSANOW, &options);
+
+    uint8_t request[8];
+    request[0] = server;
+    request[1] = function;
+    request[2] = reg_addr >> 8;
+    request[3] = reg_addr & 0xFF;
+    request[4] = value >> 8;
+    request[5] = value & 0xFF;
+    uint16_t crc = compute_crc(request, 6);
+    request[6] = crc & 0xFF;
+    request[7] = crc >> 8;
+
+    send_request(fd, request, 8);
+
+    uint8_t response[8];
+    if (read_response(fd, response, 8) != 8) {
+        close(fd);
+        return 1;
+    }
+
+    for (int i = 0; i < 8; i++) printf("%02X ", response[i]);
+    printf("\n");
+
+    close(fd);
+    return 0;
+}
+

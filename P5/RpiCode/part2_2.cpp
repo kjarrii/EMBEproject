@@ -1,10 +1,10 @@
-#include <iostream>
+#include <stdio.h>
+#include <stdlib.h> 
 #include <fcntl.h>
 #include <unistd.h>
 #include <termios.h>
 #include <stdint.h>
-#include <cstring>
-#include <cstdio>
+#include <string.h>
 
 uint16_t compute_crc(uint8_t *buf, int len) {
     uint16_t crc = 0xFFFF;
@@ -40,7 +40,7 @@ int open_serial(const char *device) {
     return fd;
 }
 
-void send_request(int fd, uint8_t server, uint8_t func, uint16_t reg, uint16_t value = 0) {
+void send_request(int fd, uint8_t server, uint8_t func, uint16_t reg, uint16_t value) {
     uint8_t request[8];
     request[0] = server;
     request[1] = func;
@@ -62,11 +62,11 @@ void send_request(int fd, uint8_t server, uint8_t func, uint16_t reg, uint16_t v
     write(fd, request, 8);
 
     // Display sent request
-    std::cout << "Sent request: ";
+    printf("Sent request: ");
     for (int i = 0; i < 8; i++) {
         printf("%02X ", request[i]);
     }
-    std::cout << std::endl;
+    printf("\n");
 }
 
 void read_response(int fd) {
@@ -74,22 +74,22 @@ void read_response(int fd) {
     int n = read(fd, response, 8);
 
     if (n > 0) {
-        std::cout << "Received reply: ";
+        printf("Received reply: ");
         for (int i = 0; i < n; i++) {
             printf("%02X ", response[i]);
         }
-        std::cout << std::endl;
+        printf("\n");
 
         // Check for exception response
         if ((response[1] & 0x80) == 0x80) {
-            std::cout << "Exception Code: " << (int)response[2] << std::endl;
+            printf("Exception Code: %d\n", response[2]);
         }
     }
 }
 
 int main(int argc, char *argv[]) {
     if (argc < 5) {
-        std::cerr << "Usage: " << argv[0] << " <server> <function> <register> <value>\n";
+        fprintf(stderr, "Usage: %s <server> <function> <register> <value>\n", argv[0]);
         return -1;
     }
 
@@ -100,7 +100,7 @@ int main(int argc, char *argv[]) {
 
     int fd = open_serial("/dev/ttyS0");
     if (fd == -1) {
-        std::cerr << "Error opening serial port.\n";
+        fprintf(stderr, "Error opening serial port.\n");
         return -1;
     }
 

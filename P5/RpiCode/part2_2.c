@@ -40,7 +40,7 @@ int open_serial(const char *device) {
     return fd;
 }
 
-void send_modbus_request(int fd, uint8_t address, uint8_t function, uint16_t reg, uint16_t value) {
+void send_request(int fd, uint8_t address, uint8_t function, uint16_t reg, uint16_t value) {
     uint8_t request[8];
     request[0] = address;
     request[1] = function;

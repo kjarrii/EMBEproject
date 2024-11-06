@@ -56,8 +56,8 @@ void send_request(int fd, uint8_t server, uint8_t func, uint16_t reg, uint16_t v
     }
 
     uint16_t crc = compute_crc(request, 6);
-    request[6] = crc & 0xFF; 
-    request[7] = (crc >> 8);
+    request[6] = (crc >> 8);
+    request[7] = crc & 0xFF;  
 
     write(fd, request, 8);
 

@@ -40,20 +40,32 @@ int open_serial(const char *device) {
     return fd;
 }
 
-void send_request(int fd, uint8_t address, uint8_t function, uint16_t reg, uint16_t value) {
+void send_request(int fd, uint8_t server, uint8_t func, uint16_t reg, uint16_t value) {
     uint8_t request[8];
-    request[0] = address;
-    request[1] = function;
+    request[0] = server;
+    request[1] = func;
     request[2] = reg >> 8;
     request[3] = reg & 0xFF;
-    request[4] = value >> 8;
-    request[5] = value & 0xFF;
-    
+
+    if (func == 0x06) { 
+        request[4] = value >> 8;
+        request[5] = value & 0xFF;
+    } else {
+        request[4] = 0x00;
+        request[5] = 0x01;
+    }
+
     uint16_t crc = compute_crc(request, 6);
-    request[6] = crc & 0xFF;
-    request[7] = crc >> 8;
+    request[6] = crc & 0xFF; 
+    request[7] = (crc >> 8);
 
     write(fd, request, 8);
+
+    printf("Sent request: ");
+    for (int i = 0; i < 8; i++) {
+        printf("%02x ", request[i]);
+    }
+    printf("\n");
 }
 
 void read_response(int fd) {
